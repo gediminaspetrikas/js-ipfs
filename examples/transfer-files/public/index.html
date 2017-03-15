@@ -5,19 +5,22 @@
     <link rel="stylesheet" href="css/app.css">
     <title>IPFS - Transfer Files</title>
   </head>
+
   <body ondragover="event.preventDefault()">
     <div class="dragover-popup">
       <h1>Drop file to upload</h1>
     </div>
+
     <div class="header">
       <a href="https://ipfs.io" target="_blank">
-        <img src="ipfs-logo.svg" height="32" id="logo">
+        <img src="ipfs-logo.svg" height="32" id="logo" alt="ipfs logo">
       </a>
       <h1>Transfer Files</h1>
       <div class="note">
         <i>P.S. drop files anywhere to upload them!</i>
       </div>
     </div>
+
     <div class="wrapper">
       <div id="ipfs" class="ipfs" >
         <div class="left">
@@ -57,6 +60,7 @@
         <pre id="errors" class="hidden"></pre>
       </div>
     </div>
+
     <!-- The IPFS node module -->
     <script src="js/ipfs.js"></script>
     <!--

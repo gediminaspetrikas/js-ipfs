@@ -17,8 +17,6 @@ const $details = document.querySelector('#details')
 const $allDisabledButtons = document.querySelectorAll('button:disabled')
 const $allDisabledInputs = document.querySelectorAll('input:disabled')
 
-let ipfs
-let peerInfo
 
 // TODO groups to refactor into
 // ipfs stuff
@@ -38,9 +36,25 @@ let peerInfo
 // event listeners
 // states
 
+let node
+let peerInfo
+
 function start () {
-  if (!ipfs) {
-    updateView('starting', ipfs)
+  if (!node) {
+    updateView('starting', node)
+
+    const repoPath = '/tmp/ipfs' + Math.random()
+    const node = new window.Ipfs({
+      repo: repoPath,
+      config: {
+        Addresses: {
+          Swarm: {
+            // TODO need to get a way to signall I want to use libp2p-webrtc-star without adding the peerId!
+          }
+        }
+      }
+    })
+
     window.createNode((err, node) => {
       if (err) {
         return onError(err)
@@ -56,7 +70,8 @@ function start () {
   }
 }
 
-const stop = () => {
+function stop () {
+  // refresh
   window.location.href = window.location.href
 }
 

@@ -1,6 +1,6 @@
 # Tutorial - Transfer files between the browser and other IPFS nodes
 
-> Welcome! This tutorial will help you build a tiny web application where you can fetch and add files to IPFS and transfer these between a go-ipfs node and a js-ipfs node.
+> Welcome! This tutorial will help you exchange files between browser nodes and go-ipfs nodes.
 
 There are a couple of caveats:
 
@@ -14,6 +14,7 @@ That being said, we will explain throughout this tutorial to circunvent the cave
 
 The goal of this tutorial is to create a application with a IPFS node that dials to other instances of it using WebRTC, and at the same time dial and transfer files from a Desktop IPFS node using WebSockets as the transport.
 
+```
 ┌──────────────┐                   ┌──────────────┐
 │   Browser    │                   │   Browser    │
 │              │      WebRTC       │              │
@@ -33,21 +34,13 @@ The goal of this tutorial is to create a application with a IPFS node that dials
         └───────▶│              │◀─────────┘
                  │              │
                  └──────────────┘
+```
 
 ## Check out the final state
 
-If you just want to check out what is the final state of how this application will look like, go to the complete folder, install the dependencies and run it.
+In the end, you should get an app running, something like this:
 
-```sh
-> cd complete
-> npm install
-> npm start
-# open your browser (Chrome or Firefox) in http://localhost:12345
-```
-
-You should get something like this:
-
-TODO: Insert final screenshot here
+`TODO: Insert final screenshot here`
 
 ## Step-by-step instructions
 
@@ -55,12 +48,9 @@ Here's what we are going to be doing, today:
 
 - 1. Set up, install a go-ipfs node in your machine
 - 2. Make your daemons listen on WebSockets
-- 3. Initialize the project
-- 4. Create the frame for your IPFS enabled app
-- 5. Add and cat a file
-- 6. Use WebRTC to dial between browser nodes
-- 7. Dial to a node using WebSockets (your Desktop ones)
-- 8. Transfer files between all of your nodes, have fun!
+- 3. Start the WebApp
+- 4. Dial to a node using WebSockets (your Desktop ones)
+- 5. Transfer files between all of your nodes, have fun!
 
 Let's go.
 
@@ -84,23 +74,19 @@ This will alias `jsipfs` on your machine; this is to avoid issues with `go-ipfs`
 
 At this point, you have either js-ipfs or go-ipfs running. Now, initialize it:
 
-```
+```sh
 > ipfs init
-```
-
-or
-
-```
+# or
 > jsipfs init
 ```
 
-This will set up an `init` file in your home directory.
+This will set up your IPFS repo in your home directory.
 
 ### 2. Make your daemons listen on WebSockets
 
-At this point, you need to edit your `config` file, the one you just set up with `{js}ipfs init`. It should be in either `~/.jsipfs/config` or `~/.ipfs/config`, depending on whether you're using JS or Go. You can run `cat ~/.jsipfs/config` to see the contents of the JSON file.
+At this point, you need to edit your `config` file, the one you just set up with `{js}ipfs init`. It should be in either `~/.jsipfs/config` or `~/.ipfs/config`, depending on whether you're using JS or Go.
 
-Since websockets are currently not stable and are experimental, you'll need to add the ability for your daemon to listen on Websocket addresses. Look into your init file (using `cat`) and find the `Addresses` block:
+Since websockets support is currently not on by default, you'll need to add a WebSockets address manually. Look into your config file and find the `Addresses` section:
 
 ```json
   "Addresses": {
@@ -112,14 +98,13 @@ Since websockets are currently not stable and are experimental, you'll need to a
   }
 ```
 
-To make Websockets work, open up the `config` file and add the following entry to your `Swarm` array: `/ip4/0.0.0.0/tcp/9999/ws`. Now, it should look like this: 
-
+Add the following entry to your `Swarm` array: `/ip4/127.0.0.1/tcp/9999/ws`. Now, it should look like this: 
 
 ```json
   "Addresses": {
     "Swarm": [
       "/ip4/0.0.0.0/tcp/4002",
-      "/ip4/0.0.0.0/tcp/9999/ws"
+      "/ip4/127.0.0.1/tcp/9999/ws"
     ],
     "API": "/ip4/127.0.0.1/tcp/5002",
     "Gateway": "/ip4/127.0.0.1/tcp/9090"
@@ -132,7 +117,7 @@ Now it should listen on Websockets. We're ready to start the daemon.
 > ipfs daemon
 ```
 
-(Again, either `jsipfs` or `ipfs` works. I'll stop explaining that from here on out.)
+(Again, either `jsipfs` or `ipfs` works. I'll stop repeting this from here on out.)
 
 You should see the Websocket address in the output:
 
@@ -151,8 +136,7 @@ It's there in line 5 - see the `/ws`? Good. that means it is listening.
 
 ### 3. Start the WebApp project
 
-
-Now, you'll need to make sure you are in `js-ipfs/examples/transfer-files/complete`. You'll see a `package.json`: this manifest holds the information for which packages you'll need to install to run the webapp. Let's install them, and then start the project:
+Now, you'll need to make sure you are in `js-ipfs/examples/transfer-files`. You'll see a `package.json`: this manifest holds the information for which packages you'll need to install to run the webapp. Let's install them, and then start the project:
 
 ```sh
 > npm install
@@ -171,50 +155,10 @@ Hit CTRL-C to stop the server
 
 Go to http://127.0.0.1:12345 in your browser; you're now in the webapp, if all went well.
 
-### 4. Create the frame for your IPFS enabled app
+### 4. Dial to a node using WebSockets (your Desktop ones)
 
-TODO: Not sure what this means.
+`TODO`
 
-### 5. Add and cat a file
+### 5. Transfer files between all of your nodes, have fun!
 
-### 6. Use WebRTC to dial between browser nodes
-### 7. Dial to a node using WebSockets (your Desktop ones)
-### 8. Transfer files between all of your nodes, have fun!
-
---------
-
-## Start the example
-
-**NOTE!** Before running the examples, you need to build `js-ipfs`. You can do this by following the instructions in https://github.com/ipfs/js-ipfs#clone-and-install-dependnecies and then building it as per https://github.com/ipfs/js-ipfs#build-a-dist-version.
-
-```
-npm install
-npm start
-```
-
-Open http://127.0.0.1:8080 in a browser.
-
-**TODO: add instructions how to cat a hash in the UI.**
-
-## Tutorial
-
-Steps
-1. create IPFS instance
-
-TODO. See `./start-ipfs.js`
-
-3. add a file in go-ipfs
-4. copy file's hash
-5. ipfs.files.cat
-
-TODO. add ipfs.files.cat code examples from index.html
-
-6. output the buffer to <img>
-
-```
-...
-stream.on('end', () => {
-  const blob = new Blob(buf)
-  picture.src = URL.createObjectURL(blob)
-})
-```
+`TODO`
