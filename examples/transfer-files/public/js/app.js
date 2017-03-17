@@ -18,27 +18,14 @@ const $addressesContainer = document.querySelector('.addresses-container')
 const $details = document.querySelector('#details')
 const $allDisabledButtons = document.querySelectorAll('button:disabled')
 const $allDisabledInputs = document.querySelectorAll('input:disabled')
-
-// TODO groups to refactor into
-// ipfs stuff
-//  start node
-//  get details
-//  get peers
-//  connect to peer
-//  get contents of hash
-//  add files to ipfs
-// creating html stuff
-//  list of peers / peers state
-//  add file to download list
-//  error handling
-//  show ipfs id
-//  show ipfs addressess
-// drag-and-drop
-// event listeners
-// states
+const $filesList = document.querySelector('.file-list')
 
 let node
 let peerInfo
+
+/*
+ * Start and stop the IPFS node
+ */
 
 function start () {
   if (!node) {
@@ -61,7 +48,7 @@ function start () {
       node.id().then((id) => {
         peerInfo = id
         updateView('ready', node)
-        setInterval(updatePeers, 1000)
+        setInterval(refreshPeerList, 1000)
         $peers.innerHTML = '<h2>peers</h2><i>waiting for peers...</i>'
       })
     })
@@ -72,102 +59,73 @@ function stop () {
   window.location.href = window.location.href // refresh page
 }
 
-const connectPeer = (e) => {
-  e.target.disabled = true
-  // Connect directly to a peer via it's multiaddr
-  node.swarm.connect($connectPeer.value, (err) => {
-    console.log(err)
-    if (err) return onError(err)
-    $connectPeer.value = ''
-    setTimeout(() => {
-      e.target.disabled = false
-    }, 500)
+/*
+ * Fetch files and display them to the user
+ */
+
+function createFileBlob (data, multihash) {
+  const file = new window.Blob(data, {type: 'application/octet-binary'})
+  const fileUrl = window.URL.createObjectURL(file)
+
+  const listItem = document.createElement('div')
+  const link = document.createElement('a')
+  link.setAttribute('href', fileUrl)
+  link.setAttribute('download', multihash)
+  const date = (new Date()).toLocaleTimeString()
+
+  link.innerText = date + ' - ' + multihash + ' - Size: ' + file.size
+  listItem.appendChild(link)
+  return listItem
+}
+
+function getFile () {
+  console.log('going to get a file')
+  const multihash = $multihashInput.value
+
+  $multihashInput.value = ''
+
+  $errors.className = 'hidden'
+
+  if (!multihash) {
+    return console.log('no multihash was inserted')
+  }
+
+  // files.get documentation - https://github.com/ipfs/interface-ipfs-core/tree/master/API/files#get
+  node.files.get(multihash, (err, filesStream) => {
+    if (err) {
+      return onError(err)
+    }
+
+    filesStream.on('data', (file) => {
+      if (file.content) {
+        const buf = []
+        // buffer up all the data in the file
+        file.content.on('data', (data) => buf.push(data))
+
+        file.content.on('end', () => {
+          const listItem = createFileBlob(buf, multihash)
+
+          $filesList.insertBefore(listItem, $filesList.firstChild)
+        })
+
+        file.content.resume()
+      }
+    })
+    filesStream.resume()
+
+    filesStream.on('end', () => console.log('Every file was fetched'))
   })
 }
 
-const catFile = () => {
-  const multihash = $multihashInput.value
-  $multihashInput.value = ''
-  $errors.className = 'hidden'
-  if (multihash) {
-    // Get a file or many files
-    node.files.get(multihash, (err, stream) => {
-      if (err) {
-        onError(err)
-      }
-      console.log(stream)
-
-      // .get gives us a stream of files
-      stream.on('data', (file) => {
-        console.log('got file', file)
-
-        const buf = []
-
-        if (file.content) {
-          // once we get a file, we also want to read the data for that file
-          file.content.on('data', (data) => buf.push(data))
-
-          file.content.on('end', () => {
-            console.log('The buf', buf)
-
-            const content = new window.Blob(buf, {type: 'application/octet-binary'})
-            const contentUrl = window.URL.createObjectURL(content)
-
-            const listItem = document.createElement('div')
-            const link = document.createElement('a')
-            link.setAttribute('href', contentUrl)
-            link.setAttribute('download', multihash)
-            const date = (new Date()).toLocaleTimeString()
-
-            link.innerText = date + ' - ' + multihash + ' - Size: ' + file.size
-            const fileList = document.querySelector('.file-list')
-
-            listItem.appendChild(link)
-            fileList.insertBefore(listItem, fileList.firstChild)
-          })
-
-          file.content.resume()
-        }
-      })
-
-      stream.on('end', () => console.log('no more files'))
-    })
-  }
-}
-
-const onError = (e) => {
-  console.error(e)
-  let msg = 'An error occured, check the dev console'
-  if (e.stack !== undefined) {
-    msg = e.stack
-  } else if (typeof e === 'string') {
-    msg = e
-  }
-  $errors.innerHTML = '<span class="error">' + msg + '</span>'
-  $errors.className = 'error visible'
-}
-window.onerror = onError
-
-const onDragEnter = () => {
-  $dragoverPopup.style.display = 'block'
-  $wrapper.style.filter = 'blur(5px)'
-  $header.style.filter = 'blur(5px)'
-}
-
-const onDragExit = () => {
-  console.log('drag left')
-  $dragoverPopup.style.display = 'none'
-  $wrapper.style.filter = ''
-  $header.style.filter = ''
-}
-
-// Handle file drop
-const onDrop = (event) => {
+/*
+ * Drag and drop
+ */
+function onDrop (event) {
   onDragExit()
   $errors.className = 'hidden'
   event.preventDefault()
-  var dt = event.dataTransfer
-  var files = dt.files
+  const dt = event.dataTransfer
+  const files = dt.files
   const readFileContents = (file) => {
     return new Promise((resolve) => {
       const reader = new window.FileReader()
@@ -176,10 +134,8 @@ const onDrop = (event) => {
     })
   }
 
-  // TODO: Promise reduce?
   for (var i = 0; i < files.length; i++) {
     const file = files[i]
-    console.log('Add file', file.name, file.size)
     readFileContents(file)
       .then((buffer) => {
         return node.files.add([{
@@ -188,7 +144,6 @@ const onDrop = (event) => {
         }])
       })
       .then((files) => {
-        console.log('Files added', files)
         $multihashInput.value = files[0].hash
         $filesStatus.innerHTML = files
           .map((e) => `Added ${e.path} as ${e.hash}`)
@@ -198,15 +153,32 @@ const onDrop = (event) => {
   }
 }
 
+/*
+ * Network related functions
+ */
+
 // Get peers from IPFS and display them
 let numberOfPeersLastTime = 0
 
-const updatePeers = () => {
-  // Once in a while, we need to refresh our list of peers in the UI
-  // .swarm.peers returns an array with all our currently connected peer
+function connectToPeer (event) {
+  event.target.disabled = true
+  node.swarm.connect($connectPeer.value, (err) => {
+    if (err) {
+      return onError(err)
+    }
+
+    $connectPeer.value = ''
+
+    setTimeout(() => {
+      event.target.disabled = false
+    }, 500)
+  })
+}
+
+function refreshPeerList () {
   node.swarm.peers((err, res) => {
     if (err) {
-      onError(err)
+      return onError(err)
     }
     if (numberOfPeersLastTime !== res.length) {
       const peersAsHtml = res.map((p) => p.addr.toString())
@@ -222,18 +194,40 @@ const updatePeers = () => {
   })
 }
 
-function setupEventListeners () {
-  $body.addEventListener('dragenter', onDragEnter)
-  $body.addEventListener('drop', onDrop)
-  // TODO should work to hide the dragover-popup but doesn't...
-  $body.addEventListener('dragleave', onDragExit)
+/*
+ * UI functions
+ */
 
-  $startButton.addEventListener('click', start)
-  $stopButton.addEventListener('click', stop)
-  $catButton.addEventListener('click', catFile)
-  $connectPeerButton.addEventListener('click', connectPeer)
+function onError (err) {
+  let msg = 'An error occured, check the dev console'
+
+  if (err.stack !== undefined) {
+    msg = err.stack
+  } else if (typeof err === 'string') {
+    msg = err
+  }
+
+  $errors.innerHTML = '<span class="error">' + msg + '</span>'
+  $errors.className = 'error visible'
 }
 
+window.onerror = onError
+
+function onDragEnter () {
+  $dragoverPopup.style.display = 'block'
+  $wrapper.style.filter = 'blur(5px)'
+  $header.style.filter = 'blur(5px)'
+}
+
+function onDragExit () {
+  $dragoverPopup.style.display = 'none'
+  $wrapper.style.filter = ''
+  $header.style.filter = ''
+}
+
+/*
+ * App states
+ */
 const states = {
   ready: () => {
     const addressesHtml = peerInfo.addresses.map((address) => {
@@ -261,8 +255,20 @@ function updateView (state, ipfs) {
   }
 }
 
+/*
+ * Boot this application!
+ */
 const startApplication = () => {
-  setupEventListeners()
+  // Setup event listeners
+  $body.addEventListener('dragenter', onDragEnter)
+  $body.addEventListener('drop', onDrop)
+  // TODO should work to hide the dragover-popup but doesn't...
+  $body.addEventListener('dragleave', onDragExit)
+
+  $startButton.addEventListener('click', start)
+  $stopButton.addEventListener('click', stop)
+  $catButton.addEventListener('click', getFile)
+  $connectPeerButton.addEventListener('click', connectToPeer)
 }
 
 startApplication()
