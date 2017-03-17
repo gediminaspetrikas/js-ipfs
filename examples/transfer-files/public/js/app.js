@@ -1,3 +1,5 @@
+/* global self */
+
 const $startButton = document.querySelector('#start')
 const $stopButton = document.querySelector('#stop')
 const $peers = document.querySelector('#peers')
@@ -16,7 +18,6 @@ const $addressesContainer = document.querySelector('.addresses-container')
 const $details = document.querySelector('#details')
 const $allDisabledButtons = document.querySelectorAll('button:disabled')
 const $allDisabledInputs = document.querySelectorAll('input:disabled')
-
 
 // TODO groups to refactor into
 // ipfs stuff
@@ -43,42 +44,38 @@ function start () {
   if (!node) {
     updateView('starting', node)
 
-    const repoPath = '/tmp/ipfs' + Math.random()
-    const node = new window.Ipfs({
+    const repoPath = 'ipfs-' + Math.random()
+
+    node = new self.Ipfs({
       repo: repoPath,
       config: {
         Addresses: {
-          Swarm: {
-            // TODO need to get a way to signall I want to use libp2p-webrtc-star without adding the peerId!
-          }
+          Swarm: [
+            '/libp2p-webrtc-star/dns4/star-signal.cloud.ipfs.team/wss'
+          ]
         }
       }
     })
 
-    window.createNode((err, node) => {
-      if (err) {
-        return onError(err)
-      }
-      ipfs = node
-      ipfs.id().then((id) => {
+    node.on('start', () => {
+      node.id().then((id) => {
         peerInfo = id
-        updateView('ready', ipfs)
+        updateView('ready', node)
         setInterval(updatePeers, 1000)
-        $peers.innerHTML = '<h2>Peers</h2><i>Waiting for peers...</i>'
+        $peers.innerHTML = '<h2>peers</h2><i>waiting for peers...</i>'
       })
     })
   }
 }
 
 function stop () {
-  // refresh
-  window.location.href = window.location.href
+  window.location.href = window.location.href // refresh page
 }
 
 const connectPeer = (e) => {
   e.target.disabled = true
   // Connect directly to a peer via it's multiaddr
-  ipfs.swarm.connect($connectPeer.value, (err) => {
+  node.swarm.connect($connectPeer.value, (err) => {
     console.log(err)
     if (err) return onError(err)
     $connectPeer.value = ''
@@ -94,7 +91,7 @@ const catFile = () => {
   $errors.className = 'hidden'
   if (multihash) {
     // Get a file or many files
-    ipfs.files.get(multihash, (err, stream) => {
+    node.files.get(multihash, (err, stream) => {
       if (err) {
         onError(err)
       }
@@ -185,9 +182,9 @@ const onDrop = (event) => {
     console.log('Add file', file.name, file.size)
     readFileContents(file)
       .then((buffer) => {
-        return ipfs.files.add([{
+        return node.files.add([{
           path: file.name,
-          content: new ipfs.types.Buffer(buffer)
+          content: new node.types.Buffer(buffer)
         }])
       })
       .then((files) => {
@@ -203,11 +200,14 @@ const onDrop = (event) => {
 
 // Get peers from IPFS and display them
 let numberOfPeersLastTime = 0
+
 const updatePeers = () => {
   // Once in a while, we need to refresh our list of peers in the UI
   // .swarm.peers returns an array with all our currently connected peer
-  ipfs.swarm.peers((err, res) => {
-    if (err) onError(err)
+  node.swarm.peers((err, res) => {
+    if (err) {
+      onError(err)
+    }
     if (numberOfPeersLastTime !== res.length) {
       const peersAsHtml = res.map((p) => p.addr.toString())
         .map((p) => {
