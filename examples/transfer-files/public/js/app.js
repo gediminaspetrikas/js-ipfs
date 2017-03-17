@@ -158,7 +158,6 @@ function onDrop (event) {
  */
 
 // Get peers from IPFS and display them
-let numberOfPeersLastTime = 0
 
 function connectToPeer (event) {
   event.target.disabled = true
@@ -176,21 +175,20 @@ function connectToPeer (event) {
 }
 
 function refreshPeerList () {
-  node.swarm.peers((err, res) => {
+  node.swarm.peers((err, peers) => {
     if (err) {
       return onError(err)
     }
-    if (numberOfPeersLastTime !== res.length) {
-      const peersAsHtml = res.map((p) => p.addr.toString())
-        .map((p) => {
-          return '<li>' + p + '</li>'
-        }).join()
 
-      $peers.innerHTML = res.length > 0
-        ? '<h2>Remote Peers</h2><ul>' + peersAsHtml + '</ul>'
-        : '<h2>Remote Peers</h2><i>Waiting for peers...</i>'
-    }
-    numberOfPeersLastTime = res.length
+    const peersAsHtml = peers
+      .map((peer) => peer.addr.toString())
+      .map((addr) => {
+        return '<li>' + addr + '</li>'
+      }).join('')
+
+    $peers.innerHTML = peers.length > 0
+      ? '<h2>Remote Peers</h2><ul>' + peersAsHtml + '</ul>'
+      : '<h2>Remote Peers</h2><i>Waiting for peers...</i>'
   })
 }
 
